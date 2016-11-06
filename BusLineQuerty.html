@@ -1,0 +1,223 @@
+<!DOCTYPE html>  
+<html>  
+<head>  
+    <meta name="viewport" content="initial-scale=1.0, user-scalable=no" />  
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />  
+    <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <title>公交查询</title>
+
+    <link rel="stylesheet" href="css/index.css"> 
+    <script type="text/javascript" src="http://api.map.baidu.com/api?v=2.0&ak=2geb8Gq735pxjowrG8YPYpDbFdWsNHSk">
+    //v2.0版本的引用方式：src="http://api.map.baidu.com/api?v=2.0&ak=您的密钥"
+    //v1.4版本及以前版本的引用方式：src="http://api.map.baidu.com/api?v=1.4&key=您的密钥&callback=initialize"
+    </script>
+</head>  
+ 
+<body>  
+    <header id="header"><p>公交查询</p></header>
+    <div id="container">
+    </div> 
+    <div id="panel"></div>
+    <div id="inp">
+        <input id="city" type="" name="" placeholder="请输入所在城市"><br>
+        <input id="start" type="text" name="" placeholder="请输入起始位置"><br>
+        <input id="end" type="text" name="" placeholder="请输入目标位置"><br>
+        <button onclick="searchObj.search()">公交查询</button>
+    </div>
+    <div id="inp2">
+        <input id="what" type="" name="" placeholder="美食/SPA/酒店/银行"><br>
+        <button onclick="searchObj.searchNearby()">周边搜索</button>
+    </div>
+    <!--<span>你想找什么</span><input id="what" type="text">
+    <button onclick="searchNearby()">周边查询</button>
+    -->
+    <footer id="footer">
+        <div id="type1">
+            <i class="iconfont1" style="position:absolute;left:20%; margin-top:0.05rem;">&#xe643;</i>
+        </div>
+        <div id="type2">
+           <i class="iconfont1" style="position:absolute;right:20%; margin-top:0.05rem;">&#xe60a;</i>
+        </div>
+    </footer>
+
+<script type="text/javascript"> 
+
+    function Search(){
+
+    }
+    Search.prototype.init = function(){
+      var map = new BMap.Map("container");          // 创建地图实例  
+      var myGeo = new BMap.Geocoder();           //  创建地址解析器实例
+      var city = document.getElementById("city");
+      var geolocation = new BMap.Geolocation(); // 浏览器定位
+      // 初始化显示为成都天府广场
+      myGeo.getPoint('成都市天府广场',function(res){
+        // console.log(res);
+        new BMap.Point(res.lng,res.lat);
+        map.centerAndZoom(res, 15);
+      });
+      // 移动端使用地图api提供的的浏览器定位，因为移动端不支持以web方式以非https协议进行定位服务
+      if(navigator.platform !== 'Win32'){
+        console.log('js api定位')
+          geolocation.getCurrentPosition(function(position){
+          if(this.getStatus() == BMAP_STATUS_SUCCESS){
+            console.log(position);
+            var curLng = position.point.lng;
+            var curLat  = position.point.lat;
+            var gpsPoint = new BMap.Point(curLng,curLat);
+            var pointArr = [];
+            pointArr.push(gpsPoint);
+            console.log(pointArr);
+            var convertor = new BMap.Convertor();//创建转换实例
+            convertor.translate(pointArr, 3,5,initMap); //转换坐标
+          }else{
+            alert('定位失败，请确认是否允许浏览器获得定位权限')
+          }
+        },{enableHighAccuracy: true,timeout:10000});
+      }else{
+        // pc端使用浏览器地理定位(html5api)
+        navigator.geolocation.getCurrentPosition(
+          function(position){
+            console.log('html5 api定位')
+          if(this.BMAP_STATUS_SUCCESS == 0){
+            var curLng = position.coords.longitude;
+            var curLat  = position.coords.latitude;
+            var gpsPoint = new BMap.Point(curLng,curLat);
+            var pointArr = [];
+            pointArr.push(gpsPoint);
+            var convertor = new BMap.Convertor();//创建转换实例
+            convertor.translate(pointArr, 3,5, initMap); //转换坐标 
+          }
+        },function(err){
+            alert('定位失败，请确认是否允许浏览器获得定位权限');
+        },
+        {enableHighAccuracy: true,timeout:10000}
+        );
+      }
+      function initMap(data){//转换坐标的回调函数
+        if(data.status == 0){
+          myGeo.getLocation(new BMap.Point(data.points[0].lng,data.points[0].lat),address)
+        }
+      }
+      function address(point){
+        if(point){
+          myGeo.getPoint(point.address,function(res){
+            console.log(point);
+            if(res){
+              city.value = point.addressComponents.city;
+              new BMap.Point(res.lng,res.lat); // 创建点坐标  
+              map.addOverlay(new BMap.Marker(res));//创建覆盖物
+              map.centerAndZoom(res, 18); //初始化地图，设置中心点坐标和地图级别  
+              map.addControl(new BMap.NavigationControl()); //缩放按钮
+              map.addControl(new BMap.ScaleControl());    //比例尺
+              map.addControl(new BMap.OverviewMapControl());  //右下角平移选址
+              console.log(map);
+            }
+          })
+        }
+      }
+      return map;
+   }
+Search.prototype.cons = function()
+{
+    var local = new BMap.LocalSearch(map, {
+    renderOptions:{map: map},
+    onSearchComplete: function(results){      
+        if (local.getStatus() == BMAP_STATUS_SUCCESS){      
+              // 判断状态是否正确      
+              var s = [];
+                  for (var i = 0; i < results.getCurrentNumPois(); i ++)
+                  {
+                  console.log(results.getPoi(i).title + ", " + results.getPoi(i).address);   
+                  } 
+              }      
+        }      
+    });
+    return local;
+};
+Search.prototype.localSearch = function()
+{
+    var what = document.getElementById("what").value;
+    this.cons().search(what);
+    //local.search("红牌楼");//用于搜索某地
+    //local.searchInBounds(what, map.getBounds());用于搜索视野范围内
+};
+Search.prototype.searchNearby = function()
+{
+  map.clearOverlays();
+  var what = document.getElementById("what").value;
+  console.log(map);
+  this.cons().searchInBounds(what, map.getBounds());
+};
+
+Search.prototype.search = function() //公交查询
+{
+  map.clearOverlays();
+  var start = document.getElementById("start").value;
+  var end = document.getElementById("end").value;
+  var city = document.getElementById("city").value;
+  var transit = new BMap.TransitRoute(city, {  
+    renderOptions: {  
+        map: map,  
+        panel: 'panel'
+    }  
+    });  
+ transit.search(start, end); 
+ var show = document.getElementById("RA_ResItem_1");
+ setInterval(function(){
+      data = transit;
+      var start = data.Ea.content.start;
+        console.log("存在");
+        var tbd = document.getElementsByTagName("tbody");
+        var pan = document.getElementById("panel");
+        pan.firstChild.style.fontFamily = "微软雅黑";
+        console.log(tbd);
+        for(i=0;i<tbd[1].childNodes.length;i++)
+        {
+            for(j=0;j<2;j++)
+            {
+                tbd[j].childNodes[i].firstChild.nextSibling.firstChild.style.color="black";
+                tbd[j].childNodes[i].firstChild.nextSibling.firstChild.style.fontSize="13px";
+                tbd[j].childNodes[i].firstChild.innerHTML="<i class=\"iconfont\">&#xe643;</i>";
+                tbd[j].childNodes[i].style.height="64px";
+            }
+        }
+        return transit;
+            }, 100)
+};
+
+var searchObj = new Search();
+var map = searchObj.init();
+var a = new BMap.LocalSearch("成都");
+var tran = searchObj.search;
+var data;
+var footer = document.getElementById("footer");
+var type1 = document.getElementById("type1");
+var type2 = document.getElementById("type2");
+
+window.onload = function(){
+   var init =  {//初始化
+      addEventListener:function(){
+          type1.addEventListener("click", function(){
+              changeType();
+              document.getElementById("inp").style.display = "block";
+              document.getElementById("header").firstChild.innerHTML = "公交查询";
+          });
+          type2.addEventListener("click", function(){
+              changeType();
+              document.getElementById("inp2").style.display = "block";
+              document.getElementById("header").firstChild.innerHTML = "周边搜索";
+          });
+          function changeType(){
+            document.getElementById("inp").style.display = "none";
+            document.getElementById("inp2").style.display = "none";
+          }
+          //页面切换
+          return this;//返回init
+      }
+   };
+   init.addEventListener();  
+}
+</script>  
+</body>  
+</html>
